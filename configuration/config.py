@@ -3,8 +3,6 @@ import argparse
 
 
 
-
-
 def base_parser():
     parser = argparse.ArgumentParser(description='KNN-Softmax Training')
 

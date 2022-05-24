@@ -63,7 +63,7 @@ def get_datalist(args, phase, class_list, start_label):
 if __name__ == "__main__":
     args = {
         'dir': './dataset',  # dataset path: str
-        'dataset': 'miniImageNet',  # dataset name: str
+        'dataset': 'CIFAR100',  # dataset name: str
     }
     class_list = ['n07613480', 'n04522168', 'n04149813']
     start_label = 3

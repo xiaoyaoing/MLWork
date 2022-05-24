@@ -125,8 +125,6 @@ def getData():    # Data
 
 def main():
 
-
-
     # logging.config.fileConfig("./configuration/logging.conf")
     # logger = logging.getLogger()
     #
@@ -178,6 +176,9 @@ def main():
         feat_loader = torch.utils.data.DataLoader(
             trainfolder, batch_size=1, shuffle=True, drop_last=False)
         # Fix the random seed to be sure we have the same permutation for one experiment
+
+
+        # 已有 train_loader, feat_loader
 
         #这里调用训练的接口
 

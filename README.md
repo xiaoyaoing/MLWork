@@ -1,5 +1,7 @@
 # MLwork
 
+> 参考代码：https://github.com/yulu0724/SDC-IL
+
 ## 1. 代码组成部分
 ### 1.1  configuration
     config.py用于设置模型参数，实现的方法需要其他参数在此处添加。
@@ -15,12 +17,12 @@
 
 ## 2. 要添加的代码
     methods/finetune.py中的Finetune类实现了一个最基本的replay式模型。  主要函数包括before_task,  train,  evaluation,  after_task。
-
+    
     before_task:  负责在每个任务训练前，负责更换分类头，重置优化器，以及一些变量的属性。
     train:  负责利用train loader进行训练。
     evaluation:  负责利用test loader测试结果
     afer_task: 负责在任务结束后更新保存的样本
-
+    
     要做的：
     需要在methods文件夹下添加一个文件用来实现你的方法，比如methods/icarl.py。  该文件实现了一个类如ICARL，继承了methods/finetune.py文件中的Finetune类。  然后主要实现以上四个函数，如果与Finetune类的相同可以直接复用。
 
@@ -47,11 +49,11 @@
 
 ## 5. 关于代码
     需要的backbone或者优化器框架中没有实现，可以考虑自己实现或者用框架中提供的代替。 （如修改了框架请在最终实验报告中说明）
-
+    
     要实现的方法里的一些功能，可能框架现有的代码不能实现，因此可以适当的修改框架代码。
-
+    
     部分要实现的论文可能没有官方代码或者官方代码不是pytorch的，可以参考github上别人的实现。
-
+    
     部分论文的setting可能比较不同，请按照“每个任务类别不相交 + class incremental”来实现。
 
 ## 6. 关于精度
