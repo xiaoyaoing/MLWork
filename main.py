@@ -31,6 +31,7 @@ from utils.method_manager import select_method
 def main():
     args = config.base_parser()
 
+    print(args)
     # Save file name
     tr_names = ""
     for trans in args.transforms:

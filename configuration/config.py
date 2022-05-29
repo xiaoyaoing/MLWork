@@ -13,13 +13,13 @@ def base_parser():
     parser.add_argument(
         "--mode",
         type=str,
-        default="finetune",
+        default="rm",
         help="CIL methods [joint, rwalk, icarl, rm,  gdumb, ewc, bic]",
     )
     parser.add_argument(
         "--mem_manage",
         type=str,
-        default=None,
+        default="default",
         help="memory management [default, random, reservoir, uncertainty, prototype]",
     )
     parser.add_argument(
@@ -35,17 +35,17 @@ def base_parser():
     parser.add_argument(
         "--n_init_cls",
         type=int,
-        default=1,
+        default=10,
         help="The number of classes of initial task",
     )
-    parser.add_argument("--rnd_seed", type=int, help="Random seed number.")
+    parser.add_argument("--rnd_seed", type=int, help="Random seed number.",default=1)
     parser.add_argument(
         "--memory_size", type=int, default=500, help="Episodic memory size"
     )
     parser.add_argument(
         "--stream_env",
         type=str,
-        default="offline",
+        default="online",
         choices=["offline", "online"],
         help="the restriction whether to keep streamed data or not",
     )
@@ -60,19 +60,19 @@ def base_parser():
 
     # Model
     parser.add_argument(
-        "--model_name", type=str, default="resnet32", help="[resnet18, resnet32]"
+        "--model_name", type=str, default="resnet18", help="[resnet18, resnet32]"
     )
     parser.add_argument("--pretrain", action="store_true", help="pretrain model or not")
 
     # Train
     parser.add_argument("--opt_name", type=str, default="sgd", help="[adam, sgd]")
     parser.add_argument("--sched_name", type=str, default="cos", help="[cos, anneal]")
-    parser.add_argument("--batchsize", type=int, default=128, help="batch size")
-    parser.add_argument("--n_epoch", type=int, default=30, help="Epoch")
+    parser.add_argument("--batchsize", type=int, default=16, help="batch size")
+    parser.add_argument("--n_epoch", type=int, default=256, help="Epoch")
 
-    parser.add_argument("--n_worker", type=int, default=0, help="The number of workers")
+    parser.add_argument("--n_worker", type=int, default=4, help="The number of workers")
 
-    parser.add_argument("--lr", type=float, default=0.1, help="learning rate")
+    parser.add_argument("--lr", type=float, default=0.05, help="learning rate")
     parser.add_argument(
         "--initial_annealing_period",
         type=int,
@@ -96,6 +96,7 @@ def base_parser():
     parser.add_argument(
         "--init_opt",
         action="store_true",
+        default=True,
         help="Initilize optimizer states for every iterations",
     )
     parser.add_argument(
@@ -104,19 +105,19 @@ def base_parser():
     parser.add_argument(
         "--joint_acc",
         type=float,
-        default=0.0,
+        default=0,
         help="Accuracy when training all the tasks at once",
     )
     # Transforms
     parser.add_argument(
         "--transforms",
         nargs="*",
-        default=[],
+        default=['cutmix', 'autoaug'],
         help="Additional train transforms [cotmix, cutout, randaug]",
     )
 
     # Benchmark
-    parser.add_argument("--exp_name", type=str, default="", help="[disjoint, blurry]")
+    parser.add_argument("--exp_name", type=str, default="blurry10", help="[disjoint, blurry]")
 
     # ICARL
     parser.add_argument(
@@ -131,6 +132,7 @@ def base_parser():
         "--distilling",
         action="store_true",
         help="use distilling loss with classification",
+        default=True
     )
 
     # Regularization
@@ -145,7 +147,7 @@ def base_parser():
     parser.add_argument(
         "--uncert_metric",
         type=str,
-        default="vr",
+        default="vr_randaug",
         choices=["vr", "vr1", "vr_randaug", "loss"],
         help="A type of uncertainty metric",
     )
