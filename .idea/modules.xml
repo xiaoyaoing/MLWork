@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/MLwork.iml" filepath="$PROJECT_DIR$/.idea/MLwork.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/rainbow-memory.iml" filepath="$PROJECT_DIR$/.idea/rainbow-memory.iml" />
     </modules>
   </component>
 </project>
