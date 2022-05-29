@@ -32,9 +32,9 @@ class FullModule(nn.Module):
 
 
 class Finetune:
-    def __init__(self, criterion, device, train_transform, test_transform, init_class, n_classes, **kwargs):
+    def __init__(self, criterion, device, train_transform, test_transform,  n_classes, **kwargs):
         self.num_learned_class = 0
-        self.num_learning_class = init_class
+        # self.num_learning_class = init_class
         self.n_classes = n_classes
         self.device = device
         self.criterion = criterion
@@ -42,7 +42,7 @@ class Finetune:
         self.opt_name = kwargs['opt_name']
         self.sched_name = kwargs['sched_name']
         self.lr = kwargs['lr']
-        self.batch_size = kwargs['batch_size']
+        self.batchsize = kwargs['batchsize']
         self.n_epoch = kwargs['n_epoch']
         self.n_woker = kwargs['n_worker']
         self.dataset = kwargs['dataset']
@@ -56,11 +56,18 @@ class Finetune:
         self.memory_list = []
         self.memory_size = kwargs['memory_size']
 
-        self.feature_extractor, self.feature_size = select_model(self.model_name)
-        self.feature_extractor = self.feature_extractor.to(self.device)
-        self.model = FullModule(self.feature_extractor, self.feature_size, self.num_learning_class)
+        self.mem_manage = kwargs["mem_manage"]
+        if kwargs["mem_manage"] == "default":
+            self.mem_manage = "random"
+        self.model = select_model(self.model_name, self.dataset, kwargs["n_init_cls"])
         self.model = self.model.to(self.device)
         self.criterion = self.criterion.to(self.device)
+
+        self.already_mem_update = False
+
+        self.mode = kwargs["mode"]
+
+        self.uncert_metric = kwargs["uncert_metric"]
 
     def set_current_dataset(self, train_datalist, test_datalist):
         random.shuffle(train_datalist)

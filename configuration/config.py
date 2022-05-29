@@ -68,7 +68,7 @@ def base_parser():
     parser.add_argument("--opt_name", type=str, default="sgd", help="[adam, sgd]")
     parser.add_argument("--sched_name", type=str, default="cos", help="[cos, anneal]")
     parser.add_argument("--batchsize", type=int, default=16, help="batch size")
-    parser.add_argument("--n_epoch", type=int, default=256, help="Epoch")
+    parser.add_argument("--n_epoch", type=int, default=4, help="Epoch")
 
     parser.add_argument("--n_worker", type=int, default=4, help="The number of workers")
 

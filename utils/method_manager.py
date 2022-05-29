@@ -6,7 +6,7 @@ GPLv3
 import logging
 
 
-# 论文的RM
+# # 论文的RM
 # from methods.ori_rainbow_memory import RM
 
 # 复现的RM

@@ -19,7 +19,7 @@ logger = logging.getLogger()
 writer = SummaryWriter("tensorboard")
 
 class RM(Finetune):
-    def __init__(self,criterion, device, train_transform, test_transform, init_class, n_classes, **kwargs):
+    def __init__(self,criterion, device, train_transform, test_transform,  n_classes, **kwargs):
         super().__init__(
             criterion, device, train_transform, test_transform, n_classes, **kwargs
         )

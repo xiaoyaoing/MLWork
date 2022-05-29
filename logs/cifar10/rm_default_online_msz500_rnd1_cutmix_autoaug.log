@@ -9,7 +9,7 @@
     Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.201))
 )
 [INFO] main.py:98 > [1] Select a CIL method (rm)
-[INFO] method_manager.py:26 > CIL Scenario: 
+[INFO] method_manager.py:30 > CIL Scenario: 
 [INFO] main.py:104 > [2] Incrementally training 5 tasks
 [INFO] main.py:114 > [2-1] Prepare a datalist for the current task
 [INFO] data_loader.py:76 > [Train] Get datalist from cifar10_train_blurry10_rand1_cls2_task0.json
@@ -19,12 +19,3 @@
 [INFO] data_loader.py:109 > [Test ] Get datalist from cifar10_test_rand1_cls2_task3.json
 [INFO] data_loader.py:109 > [Test ] Get datalist from cifar10_test_rand1_cls2_task4.json
 [INFO] main.py:131 > [2-2] Set environment for the current task
-[INFO] finetune.py:98 > Apply before_task
-[INFO] finetune.py:129 > Reset the optimizer and scheduler states
-[INFO] finetune.py:134 > Increasing the head of fc 10 -> 10
-[INFO] main.py:137 > [2-3] Start to train under online
-[INFO] main.py:152 > Train over streamed data once
-[INFO] rainbow_memory.py:70 > Streamed samples: 9750
-[INFO] rainbow_memory.py:71 > In-memory samples: 0
-[INFO] rainbow_memory.py:72 > Train samples: 9750
-[INFO] rainbow_memory.py:73 > Test samples: 10000
