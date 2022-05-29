@@ -19,3 +19,12 @@
 [INFO] data_loader.py:109 > [Test ] Get datalist from cifar10_test_rand1_cls2_task3.json
 [INFO] data_loader.py:109 > [Test ] Get datalist from cifar10_test_rand1_cls2_task4.json
 [INFO] main.py:131 > [2-2] Set environment for the current task
+[INFO] finetune.py:97 > Apply before_task
+[INFO] finetune.py:128 > Reset the optimizer and scheduler states
+[INFO] finetune.py:133 > Increasing the head of fc 10 -> 10
+[INFO] main.py:137 > [2-3] Start to train under online
+[INFO] main.py:152 > Train over streamed data once
+[INFO] rainbow_memory.py:77 > Streamed samples: 9750
+[INFO] rainbow_memory.py:78 > In-memory samples: 0
+[INFO] rainbow_memory.py:79 > Train samples: 9750
+[INFO] rainbow_memory.py:80 > Test samples: 10000
