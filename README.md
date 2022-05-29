@@ -1,6 +1,7 @@
 # MLwork
 
-> 参考代码：https://github.com/yulu0724/SDC-IL
+复现论文： Rainbow Memory
+> 参考代码：https://github.com/clovaai/rainbow-memory
 
 ## 1. 代码组成部分
 ### 1.1  configuration
