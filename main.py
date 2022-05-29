@@ -1,193 +1,212 @@
+"""
+rainbow-memory
+Copyright 2021-present NAVER Corp.
+GPLv3
+"""
+
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+
+
+
 import logging.config
 import os
 import random
+from collections import defaultdict
 
 import numpy as np
 import torch
-import torch.nn as nn
+from randaugment import RandAugment
+from torch import nn
+from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 
 from configuration import config
-from utils.CIFAR100 import CIFAR100
-from utils.ImageFolder import ImageFolder
-from utils.data_loader import get_statistics
-from methods.finetune import Finetune
-from collections import defaultdict
-from dataset import get_datalist, get_classlist
-from utils.sampler import RandomIdentitySampler
-
-args = config.base_parser()
-
-
-def getData():    # Data
-    print('==> Preparing data..')
-
-    if args.data == "cifar100":
-        transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465),
-                                 (0.2023, 0.1994, 0.2010)),
-        ])
-        root = 'DataSet'
-        traindir = root + '/cifar'
-        num_classes = 100
-
-    if args.data == 'cub':
-        mean_values = [0.485, 0.456, 0.406]
-        std_values = [0.229, 0.224, 0.225]
-        transform_train = transforms.Compose([
-            transforms.Resize(256),
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values)
-        ])
-        transform_test = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values),
-        ])
-        root = 'DataSet/CUB_200_2011'
-        traindir = os.path.join(root, 'train')
-        testdir = os.path.join(root, 'test')
-
-        num_classes = 200
-
-    if args.data == 'car':
-        mean_values = [0.485, 0.456, 0.406]
-        std_values = [0.229, 0.224, 0.225]
-        transform_train = transforms.Compose([
-            transforms.Resize(256),
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values)
-        ])
-        transform_test = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values),
-        ])
-        root = 'DataSet/Car196'
-        traindir = os.path.join(root, 'train')
-        testdir = os.path.join(root, 'test')
-
-        num_classes = 196
-
-    if args.data == 'flower':
-        mean_values = [0.485, 0.456, 0.406]
-        std_values = [0.229, 0.224, 0.225]
-        transform_train = transforms.Compose([
-            transforms.Resize(256),
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values)
-        ])
-        transform_test = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values),
-        ])
-        root = 'DataSet/flowers'
-        traindir = os.path.join(root, 'train')
-        testdir = os.path.join(root, 'test')
-
-        num_classes = 102
-
-    if args.data == 'imagenet_sub' or args.data == 'imagenet_full':
-        mean_values = [0.485, 0.456, 0.406]
-        std_values = [0.229, 0.224, 0.225]
-        transform_train = transforms.Compose([
-            # transforms.Resize(256),
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean_values,
-                                 std=std_values)
-        ])
-        root = '/datatmp/datasets/ILSVRC12_256'
-        traindir = os.path.join(root, 'train')
-        num_classes = 100
-    return transform_train,traindir,num_classes
+from utils.augment import Cutout, select_autoaugment
+from utils.data_loader import get_test_datalist, get_statistics
+from utils.data_loader import get_train_datalist
+from utils.method_manager import select_method
 
 
 def main():
+    args = config.base_parser()
 
-    # logging.config.fileConfig("./configuration/logging.conf")
-    # logger = logging.getLogger()
-    #
-    # os.makedirs(f"logs/{args.dataset}", exist_ok=True)
-    # save_path = "tmp"
-    # fileHandler = logging.FileHandler("logs/{}.log".format(save_path), mode="w")
-    # formatter = logging.Formatter(
-    #     "[%(levelname)s] %(filename)s:%(lineno)d > %(message)s"
-    # )
-    # fileHandler.setFormatter(formatter)
-    # logger.addHandler(fileHandler)
-    #
-    #
-    # if torch.cuda.is_available():
-    #     device = torch.device("cuda")
-    # else:
-    #     device = torch.device("cpu")
-    #
-    #     logger.info(f"Set the device ({device})")
+    print(args)
+    # Save file name
+    tr_names = ""
+    for trans in args.transforms:
+        tr_names += "_" + trans
+    save_path = f"{args.dataset}/{args.mode}_{args.mem_manage}_{args.stream_env}_msz{args.memory_size}_rnd{args.rnd_seed}{tr_names}"
 
-    transform_train,traindir,num_classes=getData()
+    logging.config.fileConfig("./configuration/logging.conf")
+    logger = logging.getLogger()
 
-    num_task = args.task
-    num_class_per_task = (num_classes - args.base) // (num_task - 1)
+    os.makedirs(f"logs/{args.dataset}", exist_ok=True)
+    fileHandler = logging.FileHandler("logs/{}.log".format(save_path), mode="w")
+    formatter = logging.Formatter(
+        "[%(levelname)s] %(filename)s:%(lineno)d > %(message)s"
+    )
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(fileHandler)
 
-    np.random.seed(args.seed)
-    random_perm = np.random.permutation(num_classes)
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    fisher = {}
-    prototype = {}
-    for i in range(num_task):
-        if i == 0:
-            class_index = random_perm[:args.base]
-        else:
-            class_index = random_perm[args.base + (i - 1) * num_class_per_task:args.base + i * num_class_per_task]
-        if args.data == 'cifar100':
-            trainfolder = CIFAR100(
-                root=traindir, train=True, download=True, transform=transform_train, index=class_index)
-        else:
-            trainfolder = ImageFolder(
-                traindir, transform_train, index=class_index)
+    writer = SummaryWriter("tensorboard")
 
-        train_loader = torch.utils.data.DataLoader(
-            trainfolder, batch_size=args.BatchSize,
-            sampler=RandomIdentitySampler(
-                trainfolder, num_instances=args.num_instances),
-            drop_last=True, num_workers=args.nThreads)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    logger.info(f"Set the device ({device})")
 
-        feat_loader = torch.utils.data.DataLoader(
-            trainfolder, batch_size=1, shuffle=True, drop_last=False)
-        # Fix the random seed to be sure we have the same permutation for one experiment
+    # Fix the random seeds
+    # https://hoya012.github.io/blog/reproducible_pytorch/
+    torch.manual_seed(args.rnd_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(args.rnd_seed)
+    random.seed(args.rnd_seed)
+
+    # Transform Definition
+    mean, std, n_classes, inp_size, _ = get_statistics(dataset=args.dataset)
+    train_transform = []
+    if "cutout" in args.transforms:
+        train_transform.append(Cutout(size=16))
+    if "randaug" in args.transforms:
+        train_transform.append(RandAugment())
+    if "autoaug" in args.transforms:
+        train_transform.append(select_autoaugment(args.dataset))
+
+    train_transform = transforms.Compose(
+        [
+            transforms.Resize((inp_size, inp_size)),
+            transforms.RandomCrop(inp_size, padding=4),
+            transforms.RandomHorizontalFlip(),
+            *train_transform,
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ]
+    )
+    logger.info(f"Using train-transforms {train_transform}")
+
+    test_transform = transforms.Compose(
+        [
+            transforms.Resize((inp_size, inp_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ]
+    )
+
+    logger.info(f"[1] Select a CIL method ({args.mode})")
+    criterion = nn.CrossEntropyLoss(reduction="mean")
+    method = select_method(
+        args, criterion, device, train_transform, test_transform, n_classes
+    )
+
+    logger.info(f"[2] Incrementally training {args.n_tasks} tasks")
+    task_records = defaultdict(list)
+
+    for cur_iter in range(args.n_tasks):
+        if args.mode == "joint" and cur_iter > 0:
+            return
+
+        print("\n" + "#" * 50)
+        print(f"# Task {cur_iter} iteration")
+        print("#" * 50 + "\n")
+        logger.info("[2-1] Prepare a datalist for the current task")
+
+        task_acc = 0.0
+        eval_dict = dict()
 
 
-        # 已有 train_loader, feat_loader
+        # get datalist
+        cur_train_datalist = get_train_datalist(args, cur_iter)
+        cur_test_datalist = get_test_datalist(args, args.exp_name, cur_iter)
 
-        #这里调用训练的接口
+        # Reduce datalist in Debug mode
+        if args.debug:
+            random.shuffle(cur_train_datalist)
+            random.shuffle(cur_test_datalist)
+            cur_train_datalist = cur_train_datalist[:2560]
+            cur_test_datalist = cur_test_datalist[:2560]
 
-        # if args.method == 'EWC' or args.method == 'MAS':
-        #     fisher = train_fun(args, train_loader,
-        #                        feat_loader, i, fisher=fisher)
-        # else:
-        #     train_fun(args, train_loader, feat_loader, i)
+        logger.info("[2-2] Set environment for the current task")
+        method.set_current_dataset(cur_train_datalist, cur_test_datalist)
+        # Increment known class for current task iteration.
+        method.before_task(cur_train_datalist, cur_iter, args.init_model, args.init_opt)
 
+        # The way to handle streamed samles
+        logger.info(f"[2-3] Start to train under {args.stream_env}")
+
+        if args.stream_env == "offline" or args.mode == "joint" or args.mode == "gdumb":
+            # Offline Train
+            task_acc, eval_dict = method.train(
+                cur_iter=cur_iter,
+                n_epoch=args.n_epoch,
+                batch_size=args.batchsize,
+                n_worker=args.n_worker,
+            )
+            if args.mode == "joint":
+                logger.info(f"joint accuracy: {task_acc}")
+
+        elif args.stream_env == "online":
+            # Online Train
+            logger.info("Train over streamed data once")
+            method.train(
+                cur_iter=cur_iter,
+                n_epoch=1,
+                batch_size=args.batchsize,
+                n_worker=args.n_worker,
+            )
+
+            method.__update_memory(cur_iter)
+
+            # No stremed training data, train with only memory_list
+            method.set_current_dataset([], cur_test_datalist)
+
+            logger.info("Train over memory")
+            task_acc, eval_dict = method.train(
+                cur_iter=cur_iter,
+                n_epoch=args.n_epoch,
+                batch_size=args.batchsize,
+                n_worker=args.n_worker,
+            )
+
+            method.after_task(cur_iter)
+
+        logger.info("[2-4] Update the information for the current task")
+        method.after_task(cur_iter)
+        task_records["task_acc"].append(task_acc)
+        # task_records['cls_acc'][k][j] = break down j-class accuracy from 'task_acc'
+        task_records["cls_acc"].append(eval_dict["cls_acc"])
+
+        # Notify to NSML
+        logger.info("[2-5] Report task result")
+        writer.add_scalar("Metrics/TaskAcc", task_acc, cur_iter)
+
+    np.save(f"results/{save_path}.npy", task_records["task_acc"])
+
+    # Accuracy (A)
+    A_avg = np.mean(task_records["task_acc"])
+    A_last = task_records["task_acc"][args.n_tasks - 1]
+
+    # Forgetting (F)
+    acc_arr = np.array(task_records["cls_acc"])
+    # cls_acc = (k, j), acc for j at k
+    cls_acc = acc_arr.reshape(-1, args.n_cls_a_task).mean(1).reshape(args.n_tasks, -1)
+    for k in range(args.n_tasks):
+        forget_k = []
+        for j in range(args.n_tasks):
+            if j < k:
+                forget_k.append(cls_acc[:k, j].max() - cls_acc[k, j])
+            else:
+                forget_k.append(None)
+        task_records["forget"].append(forget_k)
+    F_last = np.mean(task_records["forget"][-1][:-1])
+
+    # Intrasigence (I)
+    I_last = args.joint_acc - A_last
+
+    logger.info(f"======== Summary =======")
+    logger.info(f"A_last {A_last} | A_avg {A_avg} | F_last {F_last} | I_last {I_last}")
 
 
 if __name__ == "__main__":

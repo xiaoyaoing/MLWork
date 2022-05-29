@@ -1,3 +1,6 @@
+'''
+ML框架finetune代码
+'''
 from torch import log
 from utils.train_utils import select_model, select_optimizer
 from utils.data_loader import ImageDataset
@@ -9,6 +12,7 @@ import torch.nn as nn
 import torch
 
 logger = logging.getLogger()
+
 
 class FullModule(nn.Module):
     def __init__(self, feature_extractor, feature_size, num_classes):
@@ -25,6 +29,7 @@ class FullModule(nn.Module):
         x = self.ReLU(x)
         x = self.fc(x)
         return x
+
 
 class Finetune:
     def __init__(self, criterion, device, train_transform, test_transform, init_class, n_classes, **kwargs):
@@ -56,7 +61,6 @@ class Finetune:
         self.model = FullModule(self.feature_extractor, self.feature_size, self.num_learning_class)
         self.model = self.model.to(self.device)
         self.criterion = self.criterion.to(self.device)
-
 
     def set_current_dataset(self, train_datalist, test_datalist):
         random.shuffle(train_datalist)
@@ -101,15 +105,15 @@ class Finetune:
         incoming_classes = 1 + max(incoming_classes)
         logger.info("Increasing fc layer:  {}  ---->  {}".format(self.num_learned_class, incoming_classes))
         self.num_learning_class = incoming_classes
-        
+
         # update classifier
         in_features = self.model.fc.in_features
         out_features = self.model.fc.out_features
         weight = self.model.fc.weight.data
 
         self.model.fc = nn.Linear(
-                in_features, self.num_learning_class, bias=False
-            )
+            in_features, self.num_learning_class, bias=False
+        )
 
         # keep weights for the old classes
         self.model.fc.weight.data[:out_features] = weight
@@ -126,7 +130,7 @@ class Finetune:
     def train(self, cur_iter):
         logger.info("#" * 10 + "Start Training" + "#" * 10)
         train_list = self.train_list + self.memory_list
-        test_list  = self.test_list
+        test_list = self.test_list
         train_loader, test_loader = self.get_dataloader(
             self.batch_size, self.n_woker, train_list, test_list
         )
@@ -142,15 +146,15 @@ class Finetune:
         for epoch in range(self.n_epoch):
             if epoch > 0:
                 self.scheduler.step()
-            
+
             total_loss, correct, num_data = 0.0, 0.0, 0.0
             self.model.train()
             for i, data in enumerate(train_loader):
                 x = data['image'].to(self.device)
                 y = data['label'].to(self.device)
-                
+
                 self.optimizer.zero_grad()
-                
+
                 logit = self.model(x)
                 loss = self.criterion(logit, y)
                 preds = torch.argmax(logit, dim=-1)
@@ -159,7 +163,7 @@ class Finetune:
                 total_loss += loss.item()
                 correct += torch.sum(preds == y).item()
                 num_data += y.size(0)
-            
+
             eval_dict = self.evaluation(test_loader=test_loader, criterion=self.criterion)
 
             cls_acc = "cls_acc: ["
@@ -168,18 +172,16 @@ class Finetune:
             cls_acc += ']'
 
             logger.info(
-                f"Task {cur_iter} | Epoch {epoch+1}/{self.n_epoch} | lr {self.optimizer.param_groups[0]['lr']:.4f} | train_loss {total_loss/n_batches:.4f} | train_acc {correct/num_data:.4f} | "
+                f"Task {cur_iter} | Epoch {epoch + 1}/{self.n_epoch} | lr {self.optimizer.param_groups[0]['lr']:.4f} | train_loss {total_loss / n_batches:.4f} | train_acc {correct / num_data:.4f} | "
                 f"test_loss {eval_dict['avg_loss']:.4f} | test_acc {eval_dict['avg_acc']:.4f} |"
             )
 
             # 输出每个类别的准确率，但是cifar100类别数目一多，输出就太乱了，取决你们自己
-            #logger.info(cls_acc)
-
+            # logger.info(cls_acc)
 
             best_acc = max(best_acc, eval_dict["avg_acc"])
-            
-        return best_acc, eval_dict
 
+        return best_acc, eval_dict
 
     def evaluation(self, test_loader, criterion):
         total_correct, total_num_data, total_loss = 0.0, 0.0, 0.0
@@ -197,10 +199,10 @@ class Finetune:
                 y = y.to(self.device)
 
                 logit = self.model(x)
-                #if (i+1)%5 == 0:
+                # if (i+1)%5 == 0:
                 #    print("y = {},   logit = {}".format(y, logit))
-                #print("y = ", y)
-                #print("logit = ", logit)
+                # print("y = ", y)
+                # print("logit = ", logit)
                 loss = criterion(logit, y)
                 pred = torch.argmax(logit, dim=-1)
 
@@ -218,15 +220,14 @@ class Finetune:
                 total_loss += loss.item()
                 label += y.tolist()
 
-
         avg_acc = total_correct / total_num_data
         avg_loss = total_loss / len(test_loader)
         cls_acc = (correct_l / (num_data_l + 1e-5)).numpy().tolist()
-        
+
         ret = {"avg_loss": avg_loss, "avg_acc": avg_acc, "cls_acc": cls_acc}
 
         return ret
-        
+
     def _interpret_pred(self, y, pred):
         # xlable is batch
         ret_num_data = torch.zeros(self.num_learning_class)
@@ -243,11 +244,9 @@ class Finetune:
 
         return ret_num_data, ret_corrects
 
-
     def after_task(self, cur_iter):
         self.num_learned_class = self.num_learning_class
         # update memory list if needed
-        
 
         # random sample
 
@@ -257,6 +256,5 @@ class Finetune:
             tmp[_['label']].append(_)
         self.memory_list = []
         for _ in tmp:
-        #    print(_)
+            #    print(_)
             self.memory_list.extend(_[:k])
-

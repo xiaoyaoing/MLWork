@@ -1,69 +1,159 @@
+"""
+rainbow-memory
+Copyright 2021-present NAVER Corp.
+GPLv3
+"""
 import argparse
 
 
-
-
 def base_parser():
-    parser = argparse.ArgumentParser(description='KNN-Softmax Training')
+    parser = argparse.ArgumentParser(description="Class Incremental Learning Research")
 
-    # hype-parameters
-    parser.add_argument('-lr', type=float, default=1e-4,
-                        help="learning rate of new parameters")
-    parser.add_argument('-tradeoff', type=float, default=1.0,
-                        help="learning rate of new parameters")
-    parser.add_argument('-exp', type=str, default='exp1',
-                        help="learning rate of new parameters")
-    parser.add_argument('-margin', type=float, default=0.0,
-                        help="margin for metric loss")
+    # Mode and Exp. Settings.
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="rm",
+        help="CIL methods [joint, rwalk, icarl, rm,  gdumb, ewc, bic]",
+    )
+    parser.add_argument(
+        "--mem_manage",
+        type=str,
+        default="default",
+        help="memory management [default, random, reservoir, uncertainty, prototype]",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="cifar10",
+        help="[mnist, cifar10, cifar100, imagenet]",
+    )
+    parser.add_argument("--n_tasks", type=int, default="5", help="The number of tasks")
+    parser.add_argument(
+        "--n_cls_a_task", type=int, default=2, help="The number of class of each task"
+    )
+    parser.add_argument(
+        "--n_init_cls",
+        type=int,
+        default=10,
+        help="The number of classes of initial task",
+    )
+    parser.add_argument("--rnd_seed", type=int, help="Random seed number.",default=1)
+    parser.add_argument(
+        "--memory_size", type=int, default=500, help="Episodic memory size"
+    )
+    parser.add_argument(
+        "--stream_env",
+        type=str,
+        default="online",
+        choices=["offline", "online"],
+        help="the restriction whether to keep streamed data or not",
+    )
 
-    parser.add_argument('-BatchSize', '-b', default=128, type=int, metavar='N',
-                        help='mini-batch size (1 = pure stochastic) Default: 256')
-    parser.add_argument('-num_instances', default=8, type=int, metavar='n',
-                        help=' number of samples from one class in mini-batch')
-    parser.add_argument('-dim', default=512, type=int, metavar='n',
-                        help='dimension of embedding space')
-    parser.add_argument('-alpha', default=30, type=int, metavar='n',
-                        help='hyper parameter in KNN Softmax')
-    parser.add_argument('-k', default=16, type=int, metavar='n',
-                        help='number of neighbour points in KNN')
+    # Dataset
+    parser.add_argument(
+        "--log_path",
+        type=str,
+        default="results",
+        help="The path logs are saved. Only for local-machine",
+    )
 
-    # network
-    parser.add_argument('-data', default='cifar100', required=False,
-                        help='path to Data Set')
-    parser.add_argument('-net', default='resnet18')
-    parser.add_argument('-loss', default='triplet_no_hard_mining', required=False,
-                        help='loss for training network')
-    parser.add_argument('-epochs', default=200, type=int, metavar='N',
-                        help='epochs for training process')
+    # Model
+    parser.add_argument(
+        "--model_name", type=str, default="resnet18", help="[resnet18, resnet32]"
+    )
+    parser.add_argument("--pretrain", action="store_true", help="pretrain model or not")
 
-    parser.add_argument('-seed', default=1993, type=int, metavar='N',
-                        help='seeds for training process')
-    parser.add_argument('-save_step', default=50, type=int, metavar='N',
-                        help='number of epochs to save model')
-    parser.add_argument('-lr_step', default=200, type=int, metavar='N',
-                        help='number of epochs to save model')
-    # Resume from checkpoint
-    parser.add_argument('-start', default=0, type=int,
-                        help='resume epoch')
+    # Train
+    parser.add_argument("--opt_name", type=str, default="sgd", help="[adam, sgd]")
+    parser.add_argument("--sched_name", type=str, default="cos", help="[cos, anneal]")
+    parser.add_argument("--batchsize", type=int, default=16, help="batch size")
+    parser.add_argument("--n_epoch", type=int, default=256, help="Epoch")
 
-    # basic parameter
-    parser.add_argument('-log_dir', default='cifar100',
-                        help='where the trained models save')
-    parser.add_argument('--nThreads', '-j', default=2, type=int, metavar='N',
-                        help='number of data loading threads (default: 2)')
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight-decay', type=float, default=2e-4)
-    parser.add_argument("-gpu", type=str, default='0',
-                        help='which gpu to choose')
-    parser.add_argument("-method", type=str,
-                        default='Finetuning', help='Choose FT or SC')
+    parser.add_argument("--n_worker", type=int, default=4, help="The number of workers")
 
-    parser.add_argument('-mapping_mean', default='no',
-                        type=str, help='mapping')
-    parser.add_argument('-sigma', default=0.0, type=float, help='sigma')
-    parser.add_argument('-vez', default=0, type=int, help='vez')
-    parser.add_argument('-task', default=11, type=int, help='vez')
-    parser.add_argument('-base', default=50, type=int, help='vez')
+    parser.add_argument("--lr", type=float, default=0.05, help="learning rate")
+    parser.add_argument(
+        "--initial_annealing_period",
+        type=int,
+        default=20,
+        help="Initial Period that does not anneal",
+    )
+    parser.add_argument(
+        "--annealing_period",
+        type=int,
+        default=20,
+        help="Period (Epochs) of annealing lr",
+    )
+    parser.add_argument(
+        "--learning_anneal", type=float, default=10, help="Divisor for annealing"
+    )
+    parser.add_argument(
+        "--init_model",
+        action="store_true",
+        help="Initilize model parameters for every iterations",
+    )
+    parser.add_argument(
+        "--init_opt",
+        action="store_true",
+        default=True,
+        help="Initilize optimizer states for every iterations",
+    )
+    parser.add_argument(
+        "--topk", type=int, default=1, help="set k when we want to set topk accuracy"
+    )
+    parser.add_argument(
+        "--joint_acc",
+        type=float,
+        default=0,
+        help="Accuracy when training all the tasks at once",
+    )
+    # Transforms
+    parser.add_argument(
+        "--transforms",
+        nargs="*",
+        default=['cutmix', 'autoaug'],
+        help="Additional train transforms [cotmix, cutout, randaug]",
+    )
+
+    # Benchmark
+    parser.add_argument("--exp_name", type=str, default="blurry10", help="[disjoint, blurry]")
+
+    # ICARL
+    parser.add_argument(
+        "--feature_size",
+        type=int,
+        default=2048,
+        help="Feature size when embedding a sample",
+    )
+
+    # BiC
+    parser.add_argument(
+        "--distilling",
+        action="store_true",
+        help="use distilling loss with classification",
+        default=True
+    )
+
+    # Regularization
+    parser.add_argument(
+        "--reg_coef",
+        type=int,
+        default=100,
+        help="weighting for the regularization loss term",
+    )
+
+    # Uncertain
+    parser.add_argument(
+        "--uncert_metric",
+        type=str,
+        default="vr_randaug",
+        choices=["vr", "vr1", "vr_randaug", "loss"],
+        help="A type of uncertainty metric",
+    )
+
+    # Debug
+    parser.add_argument("--debug", action="store_true", help="Turn on Debug mode")
 
     args = parser.parse_args()
     return args
